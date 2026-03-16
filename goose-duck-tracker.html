@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>鹅鸭杀记录本</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap');
+:root {
+  --bg:#111214; --surface:#18191d; --surface2:#202228;
+  --border:#2c2e36; --accent:#f0c040; --red:#e05555;
+  --blue:#5599e0; --green:#55b87a; --text:#dddbd4; --muted:#666a78;
+  --goose:#6db8e8; --duck:#e05555; --neutral:#b06de8;
+  --font:'Noto Sans SC',sans-serif; --mono:'JetBrains Mono',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:100vh;}
+#left{display:flex;flex-direction:column;min-height:100vh;max-width:600px;margin:0 auto;}
+
+
+/* top bar */
+#top-bar{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid var(--border);flex-shrink:0;}
+#top-bar h1{font-size:13px;font-family:var(--mono);color:var(--accent);letter-spacing:0.15em;}
+
+/* tabs */
+#tab-bar{display:flex;overflow-x:auto;flex-shrink:0;border-bottom:1px solid var(--border);background:var(--surface2);scrollbar-width:none;}
+#tab-bar::-webkit-scrollbar{display:none;}
+.tab{padding:8px 14px;font-size:11px;font-family:var(--mono);color:var(--muted);cursor:pointer;white-space:nowrap;border-right:1px solid var(--border);border-bottom:2px solid transparent;transition:all 0.15s;}
+.tab:hover{color:var(--text);background:var(--surface);}
+.tab.active{color:var(--accent);background:var(--bg);border-bottom-color:var(--accent);}
+
+/* phase bar */
+#phase-bar{display:none;align-items:center;gap:10px;padding:8px 16px;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0;}
+#phase-label{font-size:12px;font-family:var(--mono);color:var(--accent);flex:1;}
+#phase-btn{padding:5px 14px;border-radius:4px;font-size:12px;cursor:pointer;font-family:var(--font);border:1px solid var(--accent);background:#2a2510;color:var(--accent);transition:all 0.15s;}
+#phase-btn:hover{background:#3a3518;}
+#phase-btn.danger{border-color:var(--red);background:#1e1212;color:var(--red);}
+
+/* content */
+#tab-content{flex:1;overflow-y:auto;padding:14px 16px;}
+
+/* setup */
+.sec{margin-bottom:14px;}
+.sec-title{font-size:10px;font-family:var(--mono);color:var(--muted);letter-spacing:0.15em;text-transform:uppercase;margin-bottom:7px;}
+
+/* chips */
+.chips{display:flex;flex-wrap:wrap;gap:4px;}
+.chip{padding:3px 9px;border-radius:20px;font-size:11px;border:1px solid var(--border);background:var(--surface2);color:var(--muted);cursor:pointer;transition:all 0.15s;-webkit-tap-highlight-color:transparent;touch-action:manipulation;}
+.chip:hover{border-color:#555;color:var(--text);}
+.chip.on-goose{background:#0d2233;border-color:var(--goose);color:var(--goose);}
+.chip.on-duck{background:#2d1010;border-color:var(--duck);color:var(--duck);}
+.chip.on-neutral{background:#1e1030;border-color:var(--neutral);color:var(--neutral);}
+.chip.my-role{box-shadow:0 0 0 2px var(--accent);font-weight:700;}
+.chip.locked{cursor:default;pointer-events:none;}
+
+/* seat grid small */
+.sg{display:grid;grid-template-columns:repeat(5,1fr);gap:5px;}
+.sgb{padding:5px 3px;font-family:var(--mono);font-size:11px;border-radius:4px;border:1px solid var(--border);background:var(--surface2);color:var(--text);cursor:pointer;text-align:center;transition:all 0.15s;}
+.sgb:hover{border-color:#555;}
+.sgb.me{background:#0d2233;border-color:var(--goose);color:var(--goose);font-weight:700;}
+.sgb.tm{background:#2d1010;border-color:var(--duck);color:var(--duck);}
+
+/* seat map */
+#seat-map{display:flex;flex-direction:column;align-items:center;gap:5px;margin-bottom:10px;}
+.seat-row{display:flex;gap:5px;align-items:flex-start;}
+.seat{width:86px;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:7px 8px;cursor:pointer;transition:all 0.15s;position:relative;align-self:flex-start;-webkit-tap-highlight-color:rgba(240,192,64,0.2);touch-action:manipulation;}
+.seat:hover{border-color:var(--accent);background:var(--surface2);}
+.seat.active{border-color:var(--accent);background:var(--surface2);}
+.seat.has-note{border-color:#3a4a2a;background:#1a2018;}
+.seat.elim{opacity:0.3;}
+.seat.elim .sn{text-decoration:line-through;}
+.seat.tm{border-color:var(--duck)!important;background:#1e0f0f!important;}
+.seat.id-goose{border-color:var(--goose)!important;background:#0d1a22!important;}
+.seat.id-duck{border-color:var(--duck)!important;background:#1e0f0f!important;}
+.seat.id-neutral{border-color:var(--neutral)!important;background:#160d22!important;}
+.sn{font-family:var(--mono);font-size:11px;color:var(--muted);margin-bottom:2px;}
+.sname{font-size:11px;color:var(--text);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.srole{
+  font-size:10px;font-weight:600;margin-top:4px;
+  display:inline-block;padding:2px 7px;border-radius:20px;
+  border:1px solid currentColor;background:rgba(0,0,0,0.3);
+}
+.sprev{font-size:10px;color:var(--text);margin-top:4px;line-height:1.5;word-break:break-all;white-space:pre-wrap;}
+
+/* editor */
+#note-editor{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:10px;}
+.eh{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
+.et{font-size:12px;font-weight:600;color:var(--accent);}
+textarea#nt{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:8px;color:var(--text);font-family:var(--font);font-size:12px;resize:vertical;min-height:70px;outline:none;line-height:1.6;}
+textarea#nt:focus{border-color:var(--accent);}
+.ea{display:flex;gap:6px;margin-top:8px;}
+
+/* pick grid */
+.seat.sd{background:#2d1010!important;border-color:var(--red)!important;box-shadow:0 0 0 2px var(--red);}
+.seat.sj{background:#2a1a00!important;border-color:#e8a040!important;box-shadow:0 0 0 2px #e8a040;}
+
+/* buttons */
+button{background:var(--surface2);border:1px solid var(--border);color:var(--text);font-family:var(--font);font-size:11px;padding:5px 11px;border-radius:4px;cursor:pointer;transition:all 0.15s;-webkit-tap-highlight-color:transparent;touch-action:manipulation;}
+button:hover{border-color:var(--accent);color:var(--accent);}
+.btn-primary{background:#2a2510;border-color:var(--accent);color:var(--accent);}
+.btn-red{color:var(--red);border-color:#4a2020;background:#1e1212;}
+.btn-red:hover{border-color:var(--red);}
+.btn-red-active{background:#2d1010;border-color:var(--duck);color:var(--duck);}
+
+/* readonly round */
+.ro-deaths{font-size:11px;color:var(--red);margin-bottom:4px;}
+.ro-jester{font-size:11px;color:#e8a040;margin-bottom:8px;}
+.ro-sep{border-top:1px solid var(--border);margin:8px 0;}
+.ro-list{display:flex;flex-direction:column;gap:6px;}
+.ro-item{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:8px 10px;}
+.ro-seat{font-size:10px;font-family:var(--mono);color:var(--muted);margin-bottom:3px;}
+.ro-text{font-size:12px;color:var(--text);line-height:1.5;}
+.ro-empty{color:var(--muted);font-size:11px;text-align:center;padding:20px 0;}
+
+/* mimic */
+#mimic-w{display:none;background:#2d1010;border:1px solid var(--red);border-radius:5px;padding:7px 12px;margin-bottom:10px;font-size:11px;color:var(--red);font-weight:600;text-align:center;}
+
+
+</style>
+</head>
+<body>
+<div id="left">
+  <div id="top-bar">
+    <h1>🪿 GOOSE·DUCK·SPY</h1>
+    <button id="game-end-btn" style="display:none;font-size:10px;color:var(--muted);" onclick="gameEnd()">游戏结束</button>
+  </div>
+  <div id="tab-bar"></div>
+  <div id="phase-bar">
+    <span id="phase-label"></span>
+    <button id="phase-btn" onclick="phaseAction()"></button>
+  </div>
+  <div id="tab-content"></div>
+</div>
+
+
+
+<script>
+const LAYOUT = [[1,2,3],[4,5,6],[7,8,9],[10,11,12],[13]];
+const N = 13;
+const ROLES = {
+  goose:   ['大白鹅','加拿大鹅','正义使者','警长','跟踪者','观鸟者','工程师','通灵者','星界行者','模仿者','侦探','复仇者','探测员','士兵','法医','殡仪员','肉汁'],
+  duck:    ['鸭子','专业杀手','爆炸王','刺客','变形者','隐形鸭','间谍','食鸟鸭','狙击手','掠夺者','巫医'],
+  neutral: ['鹈鹕','呆呆鸟','鸽子','秃鹫','猎鹰','布谷鸟','锦鸡']
+};
+
+let S = {
+  phase:'setup', round:1, tab:'setup',
+  notes:{}, rounds:[{deaths:[],jd:[]}],
+  elim:new Set(), ids:{},
+  myRole:null, myTeam:null, mySeat:null,
+  activeRoles:new Set(),
+  tm:new Set(), etm:new Set(),
+  editSeat:null, pDeaths:new Set(), pJester:new Set(),
+};
+
+const G = id => document.getElementById(id);
+const allTm = () => new Set([...S.tm,...S.etm]);
+
+// ── TABS ──────────────────────────────────────────────────────────
+function renderTabs(){
+  const bar = G('tab-bar'); bar.innerHTML='';
+  const mk=(label,key,locked)=>{
+    const t=document.createElement('div');
+    t.className='tab'+(S.tab===key?' active':'');
+    t.textContent=label;
+    t.onclick=()=>switchTab(key);
+    bar.appendChild(t);
+  };
+  mk('开局','setup',S.phase!=='setup');
+  for(let r=1;r<=S.round;r++) mk('第'+r+'轮','r'+r,r<S.round);
+}
+
+function switchTab(key){
+  S.tab=key; closeEditor();
+  G('seat-modal').style.display='none';
+  renderTabs(); renderContent();
+}
+
+function renderContent(){
+  const c=G('tab-content'); c.innerHTML='';
+  if(S.tab==='setup') renderSetup(c);
+  else renderRound(c,parseInt(S.tab.slice(1)));
+}
+
+// ── SETUP TAB ─────────────────────────────────────────────────────
+function renderSetup(c){
+  const locked=S.phase!=='setup';
+
+  // 我的角色
+  c.appendChild(mkSec('我的角色'));
+  const rd=document.createElement('div');
+  rd.style.cssText='font-size:12px;margin-bottom:8px;min-height:18px;';
+  setRoleText(rd); c.appendChild(rd);
+  const rc=document.createElement('div'); rc.className='chips';
+  Object.entries(ROLES).forEach(([team,roles])=>roles.forEach(role=>{
+    const on=S.myRole===role;
+    const ch=mkChip(role,'on-'+team,on,on?'my-role':'');
+    if(!locked) ch.onclick=()=>{
+      S.myRole=S.myRole===role?null:role;
+      S.myTeam=S.myRole?team:null;
+      if(S.myTeam!=='duck') S.tm=new Set();
+      renderContent();
+    };
+    else ch.classList.add('locked');
+    rc.appendChild(ch);
+  }));
+  c.appendChild(rc);
+
+  // 我的座位
+  c.appendChild(mkSec('我的座位'));
+  const sg=document.createElement('div'); sg.className='sg';
+  for(let i=1;i<=N;i++){
+    const b=document.createElement('button');
+    b.className='sgb'+(S.mySeat===i?' me':'');
+    b.textContent='#'+i;
+    if(!locked) b.onclick=()=>{ S.mySeat=S.mySeat===i?null:i; renderContent(); };
+    sg.appendChild(b);
+  }
+  c.appendChild(sg);
+
+  // 队友座位
+  if(S.myTeam==='duck'){
+    c.appendChild(mkSec('队友座位'));
+    const tg=document.createElement('div'); tg.className='sg'; tg.id='tmg';
+    buildTmGrid(tg,locked); c.appendChild(tg);
+  }
+
+  // 明牌角色
+  c.appendChild(mkSec('本局明牌角色'));
+  Object.entries(ROLES).forEach(([team,roles])=>{
+    const lbl=document.createElement('div');
+    lbl.style.cssText='font-size:10px;font-family:var(--mono);margin:5px 0 4px;';
+    lbl.style.color=team==='goose'?'var(--goose)':team==='duck'?'var(--duck)':'var(--neutral)';
+    lbl.textContent=team==='goose'?'🪿 鹅队':team==='duck'?'🦆 鸭队':'🐦 中立';
+    c.appendChild(lbl);
+    const row=document.createElement('div'); row.className='chips';
+    roles.forEach(role=>{
+      const on=S.activeRoles.has(role);
+      const ch=mkChip(role,'on-'+team,on);
+      if(!locked) ch.onclick=()=>{ on?S.activeRoles.delete(role):S.activeRoles.add(role); ch.className='chip'+(S.activeRoles.has(role)?' on-'+team:''); };
+      else ch.classList.add('locked');
+      row.appendChild(ch);
+    });
+    c.appendChild(row);
+  });
+
+  if(!locked){
+    const btn=document.createElement('button');
+    btn.className='btn-primary';
+    btn.style.cssText='width:100%;padding:10px;font-size:13px;font-weight:600;margin-top:10px;';
+    btn.textContent='确认开局 →';
+    btn.onclick=confirmSetup;
+    if(!S.myRole){ btn.disabled=true; btn.style.opacity='0.3'; btn.style.cursor='not-allowed'; }
+    c.appendChild(btn);
+  }
+}
+
+function mkSec(title){
+  const d=document.createElement('div'); d.className='sec';
+  const h=document.createElement('div'); h.className='sec-title'; h.textContent=title;
+  d.appendChild(h); return d;
+}
+
+function mkChip(text,onClass,isOn,extra=''){
+  const ch=document.createElement('div');
+  ch.className='chip'+(isOn?' '+onClass:'')+(extra?' '+extra:'');
+  ch.textContent=text; return ch;
+}
+
+function setRoleText(el){
+  if(!S.myRole){el.textContent='未设置';el.style.color='var(--muted)';return;}
+  const c=S.myTeam==='goose'?'var(--goose)':S.myTeam==='duck'?'var(--duck)':'var(--neutral)';
+  const ic=S.myTeam==='goose'?'🪿':S.myTeam==='duck'?'🦆':'🐦';
+  el.textContent=ic+' '+S.myRole+(S.mySeat?' · #'+S.mySeat:'');
+  el.style.color=c;
+}
+
+function buildTmGrid(grid,locked){
+  grid.innerHTML='';
+  for(let i=1;i<=N;i++){
+    if(i===S.mySeat) continue;
+    const b=document.createElement('button');
+    b.className='sgb'+(S.tm.has(i)?' tm':'');
+    b.textContent='#'+i;
+    if(!locked) b.onclick=()=>{ S.tm.has(i)?S.tm.delete(i):S.tm.add(i); b.className='sgb'+(S.tm.has(i)?' tm':''); };
+    grid.appendChild(b);
+  }
+}
+
+// ── ROUND TAB ─────────────────────────────────────────────────────
+function renderRound(c,r){
+  const cur=r===S.round;
+
+  if(cur&&S.phase==='death'){
+    const info=document.createElement('div');
+    info.style.cssText='font-size:11px;color:var(--muted);margin-bottom:8px;';
+    info.textContent='选择本轮开始前死亡的玩家（可不选）';
+    c.appendChild(info);
+    buildPickGrid(c,'death');
+    return;
+  }
+
+  if(cur&&S.phase==='jester'){
+    const info=document.createElement('div');
+    const jesterWrap=document.createElement('div');
+    jesterWrap.style.cssText='background:#1a0800;border:1px solid #e8a040;border-radius:8px;padding:10px;margin-bottom:10px;';
+    info.style.cssText='font-size:11px;color:#e8a040;margin-bottom:8px;';
+    info.textContent='💥 选择被小丑炸死的玩家（可不选）';
+    jesterWrap.appendChild(info);
+    const jesterMap=document.createElement('div');
+    buildPickGrid(jesterMap,'jester');
+    jesterWrap.appendChild(jesterMap);
+    c.appendChild(jesterWrap);
+    const sep=document.createElement('div'); sep.className='ro-sep'; c.appendChild(sep);
+    appendNotesReadonly(c,r,false);
+    return;
+  }
+
+  if(cur&&S.phase==='recording'){
+    // 模仿者警告
+    const mw=document.createElement('div'); mw.id='mimic-w';
+    mw.textContent='⚠ 队友超出正常数量 — 可能有模仿者！';
+    c.appendChild(mw); checkMimic();
+
+    // 座位图
+    buildSeatMap(c);
+
+    // 编辑器
+    const ed=document.createElement('div'); ed.id='note-editor'; ed.style.display='none';
+    ed.innerHTML='<div class="eh"><span class="et" id="et"></span></div><textarea id="nt" placeholder="记录本轮发言要点…"></textarea><div class="ea"><button class="btn-primary" onclick="saveNote()">保存</button><button onclick="closeEditor()">取消</button></div>';
+
+    c.appendChild(ed);
+    return;
+  }
+
+  // 只读
+  appendNotesReadonly(c,r,true);
+}
+
+function appendNotesReadonly(c,r,showMeta){
+  const rd=S.rounds[r-1]||{deaths:[],jd:[]};
+  if(showMeta){
+    if(rd.deaths&&rd.deaths.length){
+      const d=document.createElement('div'); d.className='ro-deaths';
+      d.textContent='💀 本轮死亡：'+rd.deaths.map(n=>'#'+n).join('、'); c.appendChild(d);
+    }
+    if(rd.jd&&rd.jd.length){
+      const d=document.createElement('div'); d.className='ro-jester';
+      d.textContent='💥 小丑炸死：'+rd.jd.map(n=>'#'+n).join('、'); c.appendChild(d);
+    }
+    const sep=document.createElement('div'); sep.className='ro-sep'; c.appendChild(sep);
+  }
+  // 座位图布局（只读）
+  const map=document.createElement('div'); map.id='seat-map';
+  LAYOUT.forEach(row=>{
+    const rowDiv=document.createElement('div'); rowDiv.className='seat-row';
+    row.forEach(num=>{
+      const seat=document.createElement('div');
+      seat.className='seat';
+      if(S.elim.has(num)) seat.classList.add('elim');
+      const id=S.ids[num];
+      if(id) seat.classList.add('id-'+id.team);
+      if(S.tm.has(num)||S.etm.has(num)) seat.classList.add('tm');
+      const text=S.notes['r'+r+'_s'+num]||'';
+      if(text) seat.classList.add('has-note');
+      const color=id?(id.team==='goose'?'var(--goose)':id.team==='duck'?'var(--duck)':'var(--neutral)'):'var(--muted)';
+      const roleStr=id?('<div class="srole" style="color:'+color+'">'+id.role+'</div>'):'';
+      const textStr=text?('<div class="sprev">'+text+'</div>'):'';
+      seat.innerHTML='<div class="sn" style="color:'+color+'">#'+num+'</div>'+roleStr+textStr;
+      rowDiv.appendChild(seat);
+    });
+    map.appendChild(rowDiv);
+  });
+  c.appendChild(map);
+}
+
+// ── SEAT MAP ─────────────────────────────────────────────────────
+function buildSeatMap(c){
+  const map=document.createElement('div'); map.id='seat-map';
+  LAYOUT.forEach(row=>{
+    const r=document.createElement('div'); r.className='seat-row';
+    row.forEach(num=>{
+      const seat=document.createElement('div');
+      seat.id='seat-'+num;
+      updateSeatClass(seat,num);
+      seat.innerHTML='<div class="sn">#'+num+'</div><div class="sname"></div><div class="sprev" id="sp-'+num+'">'+getPreview(num)+'</div>';
+      if(S.ids[num]){
+        const t=document.createElement('div'); t.className='srole';
+        const color=S.ids[num].team==='goose'?'var(--goose)':S.ids[num].team==='duck'?'var(--duck)':'var(--neutral)';
+        t.style.color=color; t.textContent=S.ids[num].role;
+        seat.querySelector('.sname').after(t);
+      }
+      seat.onclick=()=>openSeat(num);
+      r.appendChild(seat);
+    });
+    map.appendChild(r);
+  });
+  c.appendChild(map);
+}
+
+function updateSeatClass(seat,num){
+  seat.className='seat';
+  if(S.elim.has(num)) seat.classList.add('elim');
+  if(allTm().has(num)) seat.classList.add('tm');
+  if(S.notes['r'+S.round+'_s'+num]) seat.classList.add('has-note');
+  if(S.ids[num]) seat.classList.add('id-'+S.ids[num].team);
+}
+
+function getPreview(num){
+  return S.notes['r'+S.round+'_s'+num]||'';
+}
+
+function openSeat(num){
+  document.querySelectorAll('.seat').forEach(s=>s.classList.remove('active'));
+  const se=G('seat-'+num); if(se) se.classList.add('active');
+  S.editSeat=num;
+  // 弹窗标题
+  const id=S.ids[num];
+  const color=id?(id.team==='goose'?'var(--goose)':id.team==='duck'?'var(--duck)':'var(--neutral)'):'var(--accent)';
+  G('modal-seat-label').textContent='#'+num+(id?' · '+id.role:'');
+  G('modal-seat-label').style.color=color;
+  // 发言区：只在recording且未出局时显示
+  const noteSection=G('modal-note-section');
+  if(S.phase==='recording'&&!S.elim.has(num)){
+    noteSection.style.display='block';
+    G('modal-nt').value=S.notes['r'+S.round+'_s'+num]||'';
+  } else {
+    noteSection.style.display='none';
+  }
+  // 身份chips
+  buildModalIdChips(num);
+  G('seat-modal').style.display='block';
+  if(S.phase==='recording'&&!S.elim.has(num)) setTimeout(()=>G('modal-nt').focus(),100);
+}
+
+function closeEditor(){ closeModal(); }
+function closeModal(){
+  G('seat-modal').style.display='none';
+  document.querySelectorAll('.seat').forEach(s=>s.classList.remove('active'));
+  S.editSeat=null;
+}
+
+function saveNote(){ saveModalNote(); }
+function saveModalNote(){
+  const num=S.editSeat; if(!num) return;
+  const text=G('modal-nt').value.trim();
+  S.notes['r'+S.round+'_s'+num]=text;
+  closeModal();
+  const sp=G('sp-'+num); if(sp) sp.textContent=getPreview(num);
+  const se=G('seat-'+num); if(se){ if(text) se.classList.add('has-note'); else se.classList.remove('has-note'); }
+}
+
+
+function checkMimic(){
+  const mw=G('mimic-w'); if(!mw) return;
+  const total=allTm().size;
+  const thr=S.myTeam==='duck'?3:99;
+  mw.style.display=total>=thr?'block':'none';
+}
+
+// ── PICK GRID ────────────────────────────────────────────────────
+function buildPickGrid(container,type){
+  container.innerHTML='';
+  if(type==='death') S.pDeaths=new Set(); else S.pJester=new Set();
+  const map=document.createElement('div'); map.className=''; map.id='seat-map';
+  LAYOUT.forEach(row=>{
+    const rowDiv=document.createElement('div'); rowDiv.className='seat-row';
+    row.forEach(num=>{
+      const seat=document.createElement('div');
+      seat.className='seat';
+      if(S.elim.has(num)){ seat.classList.add('elim'); rowDiv.appendChild(seat);
+        seat.innerHTML='<div class="sn">#'+num+'</div>'; return; }
+      const id=S.ids[num];
+      if(id) seat.classList.add('id-'+id.team);
+      if(S.tm.has(num)) seat.classList.add('tm');
+      const color=id?(id.team==='goose'?'var(--goose)':id.team==='duck'?'var(--duck)':'var(--neutral)'):'var(--muted)';
+      const roleStr=id?('<div class="srole" style="color:'+color+'">'+id.role+'</div>'):'';
+      seat.innerHTML='<div class="sn" style="color:'+color+'">#'+num+'</div>'+roleStr;
+      const selCls=type==='death'?'sd':'sj';
+      seat.onclick=()=>{
+        const set=type==='death'?S.pDeaths:S.pJester;
+        if(set.has(num)){ set.delete(num); seat.classList.remove(selCls); }
+        else { set.add(num); seat.classList.add(selCls); }
+      };
+      rowDiv.appendChild(seat);
+    });
+    map.appendChild(rowDiv);
+  });
+  container.appendChild(map);
+}
+
+// ── PHASE MACHINE ────────────────────────────────────────────────
+const PCFG = {
+  setup:     {lbl:'开局配置',                              btn:'确认开局 →',        d:false},
+  death:     {lbl:()=>'第'+S.round+'轮 · 选择死亡玩家',   btn:'确认，开始记录 →',  d:false},
+  recording: {lbl:()=>'第'+S.round+'轮 · 记录发言',       btn:'💥 小丑爆炸',        d:true},
+  jester:    {lbl:()=>'第'+S.round+'轮 · 小丑爆炸',       btn:'确认，结束本轮 →',  d:false},
+};
+
+function setPhase(ph){
+  S.phase=ph;
+  const cfg=PCFG[ph];
+  const lbl=typeof cfg.lbl==='function'?cfg.lbl():cfg.lbl;
+  G('phase-label').textContent=lbl;
+  const btn=G('phase-btn'); btn.textContent=cfg.btn; btn.className=cfg.d?'danger':'';
+  G('phase-bar').style.display=ph==='setup'?'none':'flex';
+  G('game-end-btn').style.display=ph==='setup'?'none':'';
+  renderTabs(); renderContent();
+}
+
+function phaseAction(){
+  if(S.phase==='setup') confirmSetup();
+  else if(S.phase==='death') confirmDeath();
+  else if(S.phase==='recording') setPhase('jester');
+  else if(S.phase==='jester') confirmEnd();
+}
+
+function confirmSetup(){ setPhase('death'); S.tab='r1'; switchTab('r1'); }
+
+function confirmDeath(){
+  if(!S.rounds[S.round-1]) S.rounds[S.round-1]={deaths:[],jd:[]};
+  S.rounds[S.round-1].deaths=[...S.pDeaths];
+  S.pDeaths.forEach(n=>S.elim.add(n));
+  S.pDeaths=new Set();
+  S.tab='r'+S.round;
+  setPhase('recording');
+  // mark teammate seats
+  S.tm.forEach(n=>{ const se=G('seat-'+n); if(se) se.classList.add('tm'); });
+}
+
+function confirmEnd(){
+  if(!S.rounds[S.round-1]) S.rounds[S.round-1]={deaths:[],jd:[]};
+  S.rounds[S.round-1].jd=[...S.pJester];
+  S.pJester.forEach(n=>S.elim.add(n));
+  S.pJester=new Set();
+  const finishedRound=S.round;
+  S.round++;
+  S.rounds.push({deaths:[],jd:[]});
+  S.tab='r'+S.round;
+  setPhase('death');
+}
+
+// ── IDENTITY PANEL ────────────────────────────────────────────────
+let idTarget=null;
+function openIdPanel(num){ openSeat(num); }
+
+function buildModalIdChips(num){
+  const id=S.ids[num];
+  [['goose','modal-cg'],['duck','modal-cd'],['neutral','modal-cn']].forEach(([team,cid])=>{
+    const c=G(cid); c.innerHTML='';
+    ROLES[team].forEach(role=>{
+      const on=id&&id.role===role;
+      const ch=mkChip(role,'on-'+team,on);
+      ch.onclick=()=>{
+        S.ids[num]={role,team};
+        updateIdDisplay(num);
+        // 更新标题颜色和文字
+        const color=team==='goose'?'var(--goose)':team==='duck'?'var(--duck)':'var(--neutral)';
+        G('modal-seat-label').textContent='#'+num+' · '+role;
+        G('modal-seat-label').style.color=color;
+        buildModalIdChips(num);
+      };
+      c.appendChild(ch);
+    });
+  });
+}
+
+function clearModalId(){
+  const num=S.editSeat; if(!num) return;
+  delete S.ids[num];
+  updateIdDisplay(num);
+  G('modal-seat-label').textContent='#'+num;
+  G('modal-seat-label').style.color='var(--accent)';
+  buildModalIdChips(num);
+}
+
+function updateIdDisplay(num){
+  const se=G('seat-'+num); if(!se) return;
+  se.classList.remove('id-goose','id-duck','id-neutral');
+  let tag=se.querySelector('.srole');
+  const id=S.ids[num];
+  if(id){
+    se.classList.add('id-'+id.team);
+    if(!tag){ tag=document.createElement('div'); tag.className='srole'; const sname=se.querySelector('.sname'); if(sname) sname.after(tag); }
+    const color=id.team==='goose'?'var(--goose)':id.team==='duck'?'var(--duck)':'var(--neutral)';
+    tag.style.color=color; tag.textContent=id.role;
+  } else { if(tag) tag.remove(); }
+}
+
+function mkChip(text,onClass,isOn,extra){
+  const ch=document.createElement('div');
+  ch.className='chip'+(isOn?' '+onClass:'')+(extra?' '+extra:'');
+  ch.textContent=text; return ch;
+}
+
+// ── RESET ────────────────────────────────────────────────────────
+function gameEnd(){
+  G('confirm-modal').style.display='flex';
+}
+function doReset(){
+  G('confirm-modal').style.display='none';
+  S={phase:'setup',round:1,tab:'setup',notes:{},rounds:[{deaths:[],jd:[]}],
+    elim:new Set(),ids:{},myRole:null,myTeam:null,mySeat:null,
+    activeRoles:new Set(),tm:new Set(),etm:new Set(),
+    editSeat:null,pDeaths:new Set(),pJester:new Set()};
+  G('seat-modal').style.display='none';
+  setPhase('setup'); switchTab('setup');
+}
+
+// ── INIT ─────────────────────────────────────────────────────────
+setPhase('setup');
+switchTab('setup');
+</script>
+<div id="seat-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:100;overflow-y:auto;padding:20px;">
+  <div style="background:#18191d;border:1px solid #2c2e36;border-radius:10px;padding:16px;max-width:420px;margin:0 auto;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+      <span id="modal-seat-label" style="font-family:var(--mono);font-size:13px;color:var(--accent);font-weight:600;"></span>
+      <button onclick="closeModal()" style="font-size:18px;color:var(--muted);background:none;border:none;padding:0 4px;">×</button>
+    </div>
+    <!-- 发言区（recording阶段才显示） -->
+    <div id="modal-note-section" style="display:none;margin-bottom:14px;">
+      <div style="font-size:10px;font-family:var(--mono);color:var(--muted);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:6px;">发言记录</div>
+      <textarea id="modal-nt" style="width:100%;background:#202228;border:1px solid #2c2e36;border-radius:4px;padding:8px;color:#dddbd4;font-family:var(--font);font-size:13px;resize:vertical;min-height:80px;outline:none;line-height:1.6;" placeholder="记录本轮发言要点…"></textarea>
+      <div style="display:flex;gap:8px;margin-top:8px;">
+        <button class="btn-primary" onclick="saveModalNote()">保存发言</button>
+      </div>
+    </div>
+    <!-- 身份标记 -->
+    <div>
+      <div style="font-size:10px;font-family:var(--mono);color:var(--muted);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:8px;">推测身份</div>
+      <div style="font-size:10px;font-family:var(--mono);color:var(--goose);margin:5px 0 4px;">🪿 鹅队</div>
+      <div class="chips" id="modal-cg"></div>
+      <div style="font-size:10px;font-family:var(--mono);color:var(--duck);margin:5px 0 4px;">🦆 鸭队</div>
+      <div class="chips" id="modal-cd"></div>
+      <div style="font-size:10px;font-family:var(--mono);color:var(--neutral);margin:5px 0 4px;">🐦 中立</div>
+      <div class="chips" id="modal-cn"></div>
+      <button onclick="clearModalId()" style="margin-top:10px;font-size:10px;color:var(--muted);">清除身份标记</button>
+    </div>
+  </div>
+</div>
+
+<div id="confirm-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:999;align-items:center;justify-content:center;">
+  <div style="background:#18191d;border:1px solid #e05555;border-radius:10px;padding:24px;width:280px;text-align:center;">
+    <div style="font-size:14px;font-weight:600;color:#e05555;margin-bottom:8px;">游戏结束</div>
+    <div style="font-size:12px;color:#666a78;margin-bottom:20px;">确认重置本局所有记录？</div>
+    <div style="display:flex;gap:10px;justify-content:center;">
+      <button onclick="document.getElementById('confirm-modal').style.display='none'" style="padding:8px 20px;">取消</button>
+      <button onclick="doReset()" style="padding:8px 20px;background:#2d1010;border-color:#e05555;color:#e05555;">确认重置</button>
+    </div>
+  </div>
+</div>
+</body>
+</html>
